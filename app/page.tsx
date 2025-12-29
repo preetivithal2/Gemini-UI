@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Menu, Plus, MessageSquare, Send, ImageIcon, Mic, X, Square, MoreVertical, Trash2, LogOut, Settings, Sparkles, ChevronRight } from 'lucide-react';
 
 interface Message {
@@ -15,7 +15,6 @@ interface ChatHistory {
   messages: Message[];
 }
 
-// Reusable Profile Image Component based on your uploaded image
 const ProfileImage = ({ size = 32 }: { size?: number }) => (
   <div 
     style={{ width: size, height: size }} 
@@ -61,14 +60,22 @@ export default function ResponsiveGemini() {
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<string>('Hello');
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'How can I help you today?' }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [history, setHistory] = useState<ChatHistory[]>([]);
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
+
+  // Set dynamic greeting based on time
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Good morning');
+    else if (hour < 18) setGreeting('Good afternoon');
+    else setGreeting('Good evening');
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
 
@@ -80,11 +87,13 @@ export default function ResponsiveGemini() {
     setInput('');
     setSelectedImage(null);
     setAudioUrl(null);
+    
     if (activeChatId !== null) {
       setHistory(prev => prev.map(chat => chat.id === activeChatId ? { ...chat, messages: updatedMessages } : chat));
     }
+
     setTimeout(() => {
-      const botResponse: Message = { role: 'assistant', content: "I'm Gemini, your AI assistant. How can I further assist you with this?" };
+      const botResponse: Message = { role: 'assistant', content: "I'm Gemini, your AI assistant. How can I help you further?" };
       const finalMessages = [...updatedMessages, botResponse];
       setMessages(finalMessages);
       if (activeChatId !== null) {
@@ -94,7 +103,7 @@ export default function ResponsiveGemini() {
   };
 
   const startNewChat = () => {
-    if (messages.length > 1 && activeChatId === null) {
+    if (messages.length > 0 && activeChatId === null) {
       const newChat: ChatHistory = {
         id: Date.now(),
         title: messages.find(m => m.role === 'user')?.content.substring(0, 25) + "..." || "New Chat",
@@ -102,7 +111,7 @@ export default function ResponsiveGemini() {
       };
       setHistory([newChat, ...history]);
     }
-    setMessages([{ role: 'assistant', content: 'How can I help you today?' }]);
+    setMessages([]);
     setActiveChatId(null);
     if (window.innerWidth < 1024) setSidebarOpen(false);
   };
@@ -117,7 +126,7 @@ export default function ResponsiveGemini() {
     e.stopPropagation();
     setHistory(prev => prev.filter(chat => chat.id !== id));
     if (activeChatId === id) {
-      setMessages([{ role: 'assistant', content: 'How can I help you today?' }]);
+      setMessages([]);
       setActiveChatId(null);
     }
     setMenuOpenId(null);
@@ -220,19 +229,15 @@ export default function ResponsiveGemini() {
 
           <div className="flex items-center gap-4">
              <div className="relative">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setIsProfileOpen(!isProfileOpen); }}
-                  className="cursor-pointer hover:scale-105 transition-transform outline-none" 
-                >
+                <button onClick={(e) => { e.stopPropagation(); setIsProfileOpen(!isProfileOpen); }} className="cursor-pointer hover:scale-105 transition-transform outline-none">
                   <ProfileImage size={32} />
                 </button>
-                
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-3 w-80 bg-[#1e1f20] border border-white/10 rounded-3xl shadow-2xl z-[100] p-4 animate-in fade-in zoom-in duration-200">
                     <div className="flex flex-col items-center p-4 border-b border-white/5">
                         <div className="mb-3"><ProfileImage size={64} /></div>
-                        <h3 className="text-lg font-medium text-white">John Doe</h3>
-                        <p className="text-sm text-gray-400">john.doe@example.com</p>
+                        <h3 className="text-lg font-medium text-white">Preeti</h3>
+                        <p className="text-sm text-gray-400">preeti@example.com</p>
                         <button className="mt-4 px-6 py-2 border border-gray-600 rounded-full text-sm font-medium hover:bg-[#282a2d] transition-colors cursor-pointer">Manage your Google Account</button>
                     </div>
                     <div className="py-2">
@@ -246,23 +251,42 @@ export default function ResponsiveGemini() {
         </header>
 
         <div className="flex-1 overflow-y-auto px-4 scrollbar-thin">
-          <div className="max-w-3xl mx-auto py-8 space-y-12">
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex gap-6 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className="shrink-0 pt-1">
-                  {msg.role === 'user' ? (
-                    <ProfileImage size={32} />
-                  ) : (
-                    <GeminiLogo size={28} />
-                  )}
+          <div className="max-w-3xl mx-auto py-8">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-start mt-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <div className="flex items-center gap-3 mb-4">
+                   <Sparkles className="text-blue-400" size={24} />
+                   <h2 className="text-4xl md:text-5xl font-medium bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent">
+                      {greeting}, Preeti
+                   </h2>
                 </div>
-                <div className={`leading-relaxed text-[16px] ${msg.role === 'user' ? 'bg-[#282a2d] px-5 py-3 rounded-2xl max-w-[85%]' : 'flex-1 text-gray-200'}`}>
-                  {msg.image && <img src={msg.image} className="max-w-xs rounded-lg mb-4 shadow-lg border border-white/10" />}
-                  {msg.audio && <audio controls src={msg.audio} className="mb-4 h-8 invert opacity-80" />}
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                <h2 className="text-4xl md:text-5xl font-medium text-[#444746] mb-12">
+                   It's time to start counting down to 2026
+                </h2>
+                <div className="flex flex-wrap gap-3">
+                   {['Create image', 'Write anything', 'Help me learn', 'Boost my day'].map((text, idx) => (
+                      <button key={idx} onClick={() => setInput(text)} className="px-4 py-2.5 bg-[#1e1f20] border border-white/5 rounded-xl text-sm text-gray-300 hover:bg-[#282a2d] transition-colors cursor-pointer">
+                        {text}
+                      </button>
+                   ))}
                 </div>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-12">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex gap-6 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                    <div className="shrink-0 pt-1">
+                      {msg.role === 'user' ? <ProfileImage size={32} /> : <GeminiLogo size={28} />}
+                    </div>
+                    <div className={`leading-relaxed text-[16px] ${msg.role === 'user' ? 'bg-[#282a2d] px-5 py-3 rounded-2xl max-w-[85%]' : 'flex-1 text-gray-200'}`}>
+                      {msg.image && <img src={msg.image} className="max-w-xs rounded-lg mb-4 shadow-lg border border-white/10" />}
+                      {msg.audio && <audio controls src={msg.audio} className="mb-4 h-8 invert opacity-80" />}
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -270,10 +294,20 @@ export default function ResponsiveGemini() {
           <div className="max-w-3xl mx-auto bg-[#1e1f20] rounded-[28px] p-2 flex flex-col shadow-2xl border border-white/5 transition-all focus-within:bg-[#282a2d]">
             {selectedImage && <div className="px-4 pt-3 relative"><img src={selectedImage} className="h-16 w-16 object-cover rounded-xl border border-white/10" /><button onClick={() => setSelectedImage(null)} className="absolute top-1 left-16 bg-black rounded-full p-0.5 cursor-pointer"><X size={12} /></button></div>}
             {audioUrl && <div className="px-4 pt-3 flex items-center gap-2"><audio src={audioUrl} controls className="h-8 opacity-70" /><button onClick={() => setAudioUrl(null)} className="bg-[#282a2d] p-1 rounded-full cursor-pointer"><X size={14} /></button></div>}
-            <textarea className="bg-transparent border-none focus:ring-0 resize-none px-4 py-3 min-h-[56px] max-h-40 w-full outline-none text-[#e3e3e3]" placeholder={isRecording ? "Recording..." : "Message Gemini..."} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} />
+            <textarea 
+               className="bg-transparent border-none focus:ring-0 resize-none px-4 py-3 min-h-[56px] max-h-40 w-full outline-none text-[#e3e3e3]" 
+               placeholder={isRecording ? "Recording..." : "Ask Gemini 3"} 
+               value={input} 
+               onChange={(e) => setInput(e.target.value)} 
+               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
+            />
             <div className="flex items-center justify-between px-2 pb-1">
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-center">
                 <button onClick={() => fileInputRef.current?.click()} className="p-2.5 hover:bg-[#37393b] rounded-full text-blue-400 transition-colors cursor-pointer"><ImageIcon size={20} /></button>
+                <div className="px-3 py-1 text-xs text-gray-500 flex items-center gap-1 cursor-pointer hover:bg-[#37393b] rounded-full transition-colors">Tools</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-gray-500 cursor-pointer hover:text-gray-300">Fast ▾</div>
                 <button onClick={isRecording ? () => mediaRecorderRef.current?.stop() : async () => {
                   try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -288,9 +322,9 @@ export default function ResponsiveGemini() {
                     mediaRecorder.start();
                     setIsRecording(true);
                   } catch (err) { alert("Microphone access denied."); }
-                }} className={`p-2.5 rounded-full transition-all cursor-pointer ${isRecording ? 'bg-red-500/20 text-red-500 animate-pulse' : 'hover:bg-[#37393b] text-blue-400'}`}>{isRecording ? <Square size={20} /> : <Mic size={20} />}</button>
+                }} className={`p-2.5 rounded-full transition-all cursor-pointer ${isRecording ? 'bg-red-500/20 text-red-500 animate-pulse' : 'hover:bg-[#37393b] text-gray-400'}`}>{isRecording ? <Square size={20} /> : <Mic size={20} />}</button>
+                <button onClick={handleSendMessage} disabled={!input.trim() && !selectedImage && !audioUrl} className="p-2 bg-[#2b2c2f] rounded-full transition-all hover:bg-[#444746] cursor-pointer"><Send size={20} className={`${(input.trim() || selectedImage || audioUrl) ? 'text-blue-400' : 'text-gray-500'}`} /></button>
               </div>
-              <button onClick={handleSendMessage} disabled={!input.trim() && !selectedImage && !audioUrl} className="p-2 bg-[#2b2c2f] rounded-full transition-all hover:bg-[#444746] cursor-pointer"><Send size={20} className={`${(input.trim() || selectedImage || audioUrl) ? 'text-blue-400' : 'text-gray-500'}`} /></button>
             </div>
           </div>
           <p className="text-center text-[11px] text-gray-500 mt-4">Gemini can make mistakes, so double-check its responses.</p>
